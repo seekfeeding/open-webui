@@ -46,7 +46,7 @@ def query_doc(
     except Exception as e:
         raise e
 
-
+# 向量数据库检索已上传的文档数据
 def query_doc_with_hybrid_search(
     collection_name: str,
     query: str,
@@ -203,6 +203,7 @@ def get_embedding_function(
         return lambda query: embedding_function.encode(query).tolist()
     elif embedding_engine in ["ollama", "openai"]:
         if embedding_engine == "ollama":
+            # 按embedding_engine类型生成对应embeddings
             func = lambda query: generate_ollama_embeddings(
                 GenerateEmbeddingsForm(
                     **{
@@ -218,13 +219,13 @@ def get_embedding_function(
                 key=openai_key,
                 url=openai_url,
             )
-
+        # 调用生成方法
         def generate_multiple(query, f):
             if isinstance(query, list):
                 return [f(q) for q in query]
             else:
                 return f(query)
-
+        # 返回的是一个方法，期待外部传入query
         return lambda query: generate_multiple(query, func)
 
 
@@ -286,6 +287,7 @@ def rag_messages(
             if doc["type"] == "text":
                 context = doc["content"]
             else:
+                # 到向量数据库查询处理文档时记录的向量数据
                 if hybrid_search:
                     context = query_collection_with_hybrid_search(
                         collection_names=collection_names,

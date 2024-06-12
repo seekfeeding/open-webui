@@ -621,17 +621,18 @@ def resolve_hostname(hostname):
 
 
 def store_data_in_vector_db(data, collection_name, overwrite: bool = False) -> bool:
-
+    # 切割器
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=app.state.config.CHUNK_SIZE,
         chunk_overlap=app.state.config.CHUNK_OVERLAP,
         add_start_index=True,
     )
-
+    # 切割输入的数据
     docs = text_splitter.split_documents(data)
 
     if len(docs) > 0:
         log.info(f"store_data_in_vector_db {docs}")
+        # 处理输入的数据
         return store_docs_in_vector_db(docs, collection_name, overwrite), None
     else:
         raise ValueError(ERROR_MESSAGES.EMPTY_CONTENT)
@@ -655,11 +656,13 @@ def store_docs_in_vector_db(docs, collection_name, overwrite: bool = False) -> b
     texts = [doc.page_content for doc in docs]
     metadatas = [doc.metadata for doc in docs]
 
+    # 处理数据源结果存储到向量数据库CHROMA
     try:
         if overwrite:
             for collection in CHROMA_CLIENT.list_collections():
                 if collection_name == collection.name:
                     log.info(f"deleting existing collection {collection_name}")
+                    # 允许覆盖时，先删除同名数据
                     CHROMA_CLIENT.delete_collection(name=collection_name)
 
         collection = CHROMA_CLIENT.create_collection(name=collection_name)
@@ -809,8 +812,9 @@ def store_doc(
         if collection_name == None:
             collection_name = calculate_sha256(f)[:63]
         f.close()
-
+        # 获取加载器
         loader, known_type = get_loader(filename, file.content_type, file_path)
+        # 加载数据源
         data = loader.load()
 
         try:

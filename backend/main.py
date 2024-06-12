@@ -8,6 +8,7 @@ import sys
 import logging
 import aiohttp
 import requests
+import uvicorn
 
 from fastapi import FastAPI, Request, Depends, status
 from fastapi.staticfiles import StaticFiles
@@ -128,7 +129,7 @@ origins = ["*"]
 
 # app.add_middleware(SecurityHeadersMiddleware)
 
-
+# 拦截器，移除了参数中的docs
 class RAGMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         return_citations = False
@@ -153,6 +154,7 @@ class RAGMiddleware(BaseHTTPMiddleware):
             # data["modified"] = True  # Example modification
             if "docs" in data:
                 data = {**data}
+                # 这里处理了选择的文档，根据docs查询chroma中向量数据，使用默认RAG template生成结合文档的文字，与输入问题拼接
                 data["messages"], citations = rag_messages(
                     docs=data["docs"],
                     messages=data["messages"],
@@ -417,3 +419,6 @@ else:
     log.warning(
         f"Frontend build directory not found at '{FRONTEND_BUILD_DIR}'. Serving API only."
     )
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="LONGXIAO2-0FMZY", port=8081, forwarded_allow_ips='*')

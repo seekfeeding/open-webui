@@ -668,7 +668,7 @@ async def generate_embeddings(
             detail=error_detail,
         )
 
-
+# 生成embeddings
 def generate_ollama_embeddings(
     form_data: GenerateEmbeddingsForm,
     url_idx: Optional[int] = None,
@@ -681,19 +681,21 @@ def generate_ollama_embeddings(
 
         if ":" not in model:
             model = f"{model}:latest"
-
+        # app.state.MODELS应该是个预加载的models集合，作为白名单
         if model in app.state.MODELS:
+            # 从app.state.MODELS任选一个
             url_idx = random.choice(app.state.MODELS[model]["urls"])
         else:
             raise HTTPException(
                 status_code=400,
                 detail=ERROR_MESSAGES.MODEL_NOT_FOUND(form_data.model),
             )
-
+    # 获取配置中后端ollama url
     url = app.state.config.OLLAMA_BASE_URLS[url_idx]
     log.info(f"url: {url}")
 
     try:
+        # 通过请求ollama获取embeddings
         r = requests.request(
             method="POST",
             url=f"{url}/api/embeddings",
@@ -839,7 +841,7 @@ class GenerateChatCompletionForm(BaseModel):
     stream: Optional[bool] = None
     keep_alive: Optional[Union[int, str]] = None
 
-
+# 对话接口，用户输入问题，在这生成响应
 @app.post("/api/chat")
 @app.post("/api/chat/{url_idx}")
 async def generate_chat_completion(
@@ -854,6 +856,7 @@ async def generate_chat_completion(
         if ":" not in model:
             model = f"{model}:latest"
 
+        # 同名model随机挑个后端ollama的model
         if model in app.state.MODELS:
             url_idx = random.choice(app.state.MODELS[model]["urls"])
         else:
@@ -874,18 +877,22 @@ async def generate_chat_completion(
     )
 
     def get_request():
+        # nonlocal可以调用外部变量
         nonlocal form_data
         nonlocal r
 
         request_id = str(uuid.uuid4())
         try:
+            # 记录这次发起对话id，存到pool，之后从pool中取，处理待接收响应请求
             REQUEST_POOL.append(request_id)
 
             def stream_content():
                 try:
+                    # 这里看是不是stream响应，生成个json，不知道哪在用
                     if form_data.stream:
                         yield json.dumps({"id": request_id, "done": False}) + "\n"
 
+                    # 这里处理r发起的请求，接受小段响应，通过StreamingResponse返回给web调用出
                     for chunk in r.iter_content(chunk_size=8192):
                         if request_id in REQUEST_POOL:
                             yield chunk
@@ -893,18 +900,36 @@ async def generate_chat_completion(
                             log.warning("User: canceled request")
                             break
                 finally:
+                    # 判断request有没有close方法，节约资源的
                     if hasattr(r, "close"):
                         r.close()
                         if request_id in REQUEST_POOL:
                             REQUEST_POOL.remove(request_id)
 
+            # 请求ollama，stream请求，响应是持续返回，不是一次返回，提供stream_content给StreamingResponse，持续解析ollama response
+            # 采用的api及主要入参格式，
+            # {
+            #   "model": "llama3",
+            #   "messages": [
+            #     {
+            #       "role": "user",
+            #       "content": "<context>Introducing Windows 20: Unleash the Future of Computing.Feature 1: Quantum Speed Windows 20 redefines speed with Quantum Speed technology, propelling your computing experience to unprecedented levels of performance. Harnessing the power of quantum computing principles, tasks that once took minutes now complete in a blink of an eye. Whether loading large applications or processing complex data sets, Windows 20's Quantum Speed accelerates your workflow to unimaginable speeds.Feature 2: Infinite Multitasking Experience infinite multitasking possibilities with Windows 20's revolutionary Infinite Multitasking feature. Say goodbye to juggling windows and tabs—Windows 20 allows you to effortlessly manage an infinite number of tasks simultaneously. Seamlessly switch between projects, collaborate across multiple applications, and embrace a new era of productivity without limits. With Infinite Multitasking, your creativity knows no bounds. The above is about Windows 20 </context>When answer to user:- If you don't know, just say that you don't know.- If you don't know when you are not sure, ask for clarification.Avoid mentioning that you obtained the information from the context.And answer according to the language of the user's question.Given the context information, answer the query.Query: please tell me about windows 20 and windows 30 you know",
+            #     }，
+            #     {
+            #       "role": "user",
+            #       "content": ""
+            #     }
+            #   ]
+            # }
+
+            # 可以看到，RAG实现原理是结合prompt，生成了巨长的输入发给ollama，
             r = requests.request(
                 method="POST",
                 url=f"{url}/api/chat",
                 data=form_data.model_dump_json(exclude_none=True).encode(),
                 stream=True,
             )
-
+            # stream响应中存在4xx或5xx的就抛异常
             r.raise_for_status()
 
             return StreamingResponse(

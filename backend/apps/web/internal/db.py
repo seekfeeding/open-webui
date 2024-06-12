@@ -16,6 +16,7 @@ if os.path.exists(f"{DATA_DIR}/ollama.db"):
 else:
     pass
 
+# 数据库文件webui.db，ORM数据库框架peewee
 DB = connect(DATABASE_URL)
 log.info(f"Connected to a {DB.__class__.__name__} database.")
 router = Router(DB, migrate_dir="apps/web/internal/migrations", logger=log)
