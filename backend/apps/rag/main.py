@@ -30,6 +30,7 @@ from langchain_community.document_loaders import (
     UnstructuredExcelLoader,
     UnstructuredPowerPointLoader,
     YoutubeLoader,
+    ConfluenceLoader,
 )
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
@@ -200,6 +201,11 @@ class CollectionNameForm(BaseModel):
 class UrlForm(CollectionNameForm):
     url: str
 
+class Confluence(CollectionNameForm):
+    id: str
+    page_id: str
+    page_url: str
+    page_token: str
 
 @app.get("/")
 async def get_status():
@@ -588,6 +594,32 @@ def store_web(form_data: UrlForm, user=Depends(get_current_user)):
             detail=ERROR_MESSAGES.DEFAULT(e),
         )
 
+
+def store_confluence(id: str, url: str, token: str, page_id: str, user=Depends(get_current_user)):
+    # "https://www.gutenberg.org/files/1727/1727-h/1727-h.htm"
+    try:
+        loader = ConfluenceLoader(
+            url=url,  # Base URL of your Confluence instance
+            token=token,                # Your Confluence username
+            page_ids=[page_id]
+        )
+        data = loader.load()
+        log.info(f"load confluence page: {page_id}, data: {data}")
+        collection_name = id
+        if collection_name == "":
+            collection_name = calculate_sha256_string(page_id)[:63]
+
+        store_data_in_vector_db(data, collection_name, overwrite=True)
+        return {
+            "status": True,
+            "collection_name": collection_name,
+        }
+    except Exception as e:
+        log.exception(e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ERROR_MESSAGES.DEFAULT(e),
+        )
 
 def get_web_loader(url: str, verify_ssl: bool = True):
     # Check if the URL is valid

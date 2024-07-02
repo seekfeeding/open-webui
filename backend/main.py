@@ -28,7 +28,9 @@ from apps.litellm.main import (
     shutdown_litellm_background,
 )
 
-
+# 后端Web框架，apps下大部分直接用FastAPI，web下routers用APIRouter，实际上并没有太大区别，routers在apps.web.main中引入
+# 通过app.include_router挂载到main的app下
+# 然后各个功能最终都在这个文件下汇总，挂载到根app下
 from apps.audio.main import app as audio_app
 from apps.images.main import app as images_app
 from apps.rag.main import app as rag_app
@@ -61,6 +63,7 @@ from config import (
     WEBHOOK_URL,
     ENABLE_ADMIN_EXPORT,
     AppConfig,
+    CONFLUENCE_PAGE_IDS,
 )
 from constants import ERROR_MESSAGES
 
@@ -150,26 +153,36 @@ class RAGMiddleware(BaseHTTPMiddleware):
             if "citations" in data:
                 del data["citations"]
 
+            rag_list = []
             # Example: Add a new key-value pair or modify existing ones
             # data["modified"] = True  # Example modification
             if "docs" in data:
-                data = {**data}
-                # 这里处理了选择的文档，根据docs查询chroma中向量数据，使用默认RAG template生成结合文档的文字，与输入问题拼接
-                data["messages"], citations = rag_messages(
-                    docs=data["docs"],
-                    messages=data["messages"],
-                    template=rag_app.state.config.RAG_TEMPLATE,
-                    embedding_function=rag_app.state.EMBEDDING_FUNCTION,
-                    k=rag_app.state.config.TOP_K,
-                    reranking_function=rag_app.state.sentence_transformer_rf,
-                    r=rag_app.state.config.RELEVANCE_THRESHOLD,
-                    hybrid_search=rag_app.state.config.ENABLE_RAG_HYBRID_SEARCH,
-                )
-                del data["docs"]
+                for doc in data["docs"]:
+                    rag_list.append({**doc, "type": "doc"})
 
-                log.debug(
-                    f"data['messages']: {data['messages']}, citations: {citations}"
-                )
+            if "confluences" in data:
+                if not data["confluences"]:
+                    for confluence in data["confluences"]:
+                        rag_list.append({**confluence, "type": "confluence"})
+            else:
+                page_ids = CONFLUENCE_PAGE_IDS.split(",")
+                for page_id in page_ids:
+                    rag_list.append({"page_id": page_id, "type": "confluence"})
+            # 这里处理了选择的文档，根据docs查询chroma中向量数据，使用默认RAG template生成结合文档的文字，与输入问题拼接
+            data["messages"], citations = rag_messages(
+                rag_list=rag_list,
+                messages=data["messages"],
+                template=rag_app.state.config.RAG_TEMPLATE,
+                embedding_function=rag_app.state.EMBEDDING_FUNCTION,
+                k=rag_app.state.config.TOP_K,
+                reranking_function=rag_app.state.sentence_transformer_rf,
+                r=rag_app.state.config.RELEVANCE_THRESHOLD,
+                hybrid_search=rag_app.state.config.ENABLE_RAG_HYBRID_SEARCH,
+            )
+
+            log.debug(
+                f"data['messages']: {data['messages']}, citations: {citations}"
+            )
 
             modified_body_bytes = json.dumps(data).encode("utf-8")
 
@@ -421,4 +434,4 @@ else:
     )
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="LONGXIAO2-0FMZY", port=8081, forwarded_allow_ips='*')
+    uvicorn.run(app, host="localhost", port=8080, forwarded_allow_ips='*')

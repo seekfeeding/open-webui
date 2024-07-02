@@ -5,6 +5,7 @@ from apps.web.routers import (
     auths,
     users,
     chats,
+    confluences,
     documents,
     modelfiles,
     prompts,
@@ -55,6 +56,7 @@ app.include_router(auths.router, prefix="/auths", tags=["auths"])
 app.include_router(users.router, prefix="/users", tags=["users"])
 app.include_router(chats.router, prefix="/chats", tags=["chats"])
 
+app.include_router(confluences.router, prefix="/confluences", tags=["confluences"])
 app.include_router(documents.router, prefix="/documents", tags=["documents"])
 app.include_router(modelfiles.router, prefix="/modelfiles", tags=["modelfiles"])
 app.include_router(prompts.router, prefix="/prompts", tags=["prompts"])

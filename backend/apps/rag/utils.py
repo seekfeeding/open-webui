@@ -20,7 +20,11 @@ from langchain.retrievers import (
 
 from typing import Optional
 from config import SRC_LOG_LEVELS, CHROMA_CLIENT
-
+from apps.web.models.confluences import (
+    Confluences,
+    ConfluenceForm,
+    ConfluenceModel,
+)
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
@@ -230,7 +234,7 @@ def get_embedding_function(
 
 
 def rag_messages(
-    docs,
+    rag_list,
     messages,
     template,
     embedding_function,
@@ -239,7 +243,7 @@ def rag_messages(
     r,
     hybrid_search,
 ):
-    log.debug(f"docs: {docs} {messages} {embedding_function} {reranking_function}")
+    log.debug(f"rag_list: {rag_list} {messages} {embedding_function} {reranking_function}")
 
     last_user_message_idx = None
     for i in range(len(messages) - 1, -1, -1):
@@ -269,15 +273,23 @@ def rag_messages(
     extracted_collections = []
     relevant_contexts = []
 
-    for doc in docs:
+    for doc in rag_list:
         context = None
-
-        collection_names = (
-            doc["collection_names"]
-            if doc["type"] == "collection"
-            else [doc["collection_name"]]
-        )
-
+        if doc["type"] =="doc":
+            collection_names = (
+                doc["collection_names"]
+                if doc["type"] == "collection"
+                else [doc["collection_name"]]
+            )
+        if doc["type"] =="confluence":
+            # 去按pageid到向量数据库查collection id
+            pageid=doc["page_id"]
+            confluence = Confluences.get_confluence_by_pageid(pageid)
+            if confluence is None:
+                log.error(f"Page {pageid} Not Found In DB")
+            collection_names = [confluence.id]
+            print(f"load confluence collection {collection_names}")
+        # 去重
         collection_names = set(collection_names).difference(extracted_collections)
         if not collection_names:
             log.debug(f"skipping {doc} as it has already been extracted")
@@ -287,6 +299,7 @@ def rag_messages(
             if doc["type"] == "text":
                 context = doc["content"]
             else:
+                # doc["type"]为“doc”时
                 # 到向量数据库查询处理文档时记录的向量数据
                 if hybrid_search:
                     context = query_collection_with_hybrid_search(
@@ -316,6 +329,7 @@ def rag_messages(
     context_string = ""
 
     citations = []
+    # relevant_contexts存储查询出相关联的内容
     for context in relevant_contexts:
         try:
             if "documents" in context:
@@ -335,7 +349,7 @@ def rag_messages(
             log.exception(e)
 
     context_string = context_string.strip()
-
+    # 用户输入 + RAG prompt + RAG 数据，汇总起来，用于发送给LLM
     ra_content = rag_template(
         template=template,
         context=context_string,
@@ -422,7 +436,7 @@ def generate_openai_embeddings(
         else:
             raise "Something went wrong :/"
     except Exception as e:
-        print(e)
+        log.info(e)
         return None
 
 

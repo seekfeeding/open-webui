@@ -518,7 +518,7 @@ DEFAULT_PROMPT_SUGGESTIONS = PersistentConfig(
 DEFAULT_USER_ROLE = PersistentConfig(
     "DEFAULT_USER_ROLE",
     "ui.default_user_role",
-    os.getenv("DEFAULT_USER_ROLE", "pending"),
+    os.getenv("DEFAULT_USER_ROLE", "user"),
 )
 
 USER_PERMISSIONS_CHAT_DELETION = (
@@ -562,6 +562,16 @@ WEBUI_SECRET_KEY = os.environ.get(
 
 if WEBUI_AUTH and WEBUI_SECRET_KEY == "":
     raise ValueError(ERROR_MESSAGES.ENV_VAR_NOT_FOUND)
+
+####################################
+# Confluence
+####################################
+CONFLUENCE_URL = os.environ.get("CONFLUENCE_URL", "")
+
+CONFLUENCE_PAGE_IDS = os.environ.get("CONFLUENCE_PAGE_IDS", "")
+
+CONFLUENCE_TOKEN = os.environ.get("CONFLUENCE_TOKEN", "")
+
 
 ####################################
 # RAG
