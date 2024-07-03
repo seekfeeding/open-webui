@@ -41,7 +41,7 @@ async def create_new_doc(user=Depends(get_admin_user)):
     # 判断是否有正在执行刷新任务，有则直接忽略本次请求
     if not Confluences.is_refresh_complete():
         log.info("Last Refresh Was Not Completed")
-        return {"result": "Last Refresh Was Not Completed"}
+        return {"status":0, "message": "Last Refresh Was Not Completed"}
     # if page_ids is None or page_ids =="":
     #     log.info("page_id should not be empty")
     page_ids = CONFLUENCE_PAGE_IDS
@@ -51,11 +51,12 @@ async def create_new_doc(user=Depends(get_admin_user)):
         log.info("No Confluence Page To Load")
         return {"result": "No Confluence Page To Load"}
     # 按传入pageid删除sqlite和Chroma，pageid为空则用配置中默认的
-    result = await run_in_threadpool(insert_to_db, ids, user)
-    return {"result": result}
     # 按传入pageid加载confluence page，存储到sqlite和Chroma，id用uuid
+    result = await run_in_threadpool(insert_to_db, ids, user)
+    return {"status":1, "message": result}
+
 def insert_to_db(ids, user):
-    print("start to insert to db")
+    log.info("start to insert to db")
     success_count = 0
     for page_id in ids:
         id = str(uuid.uuid4())
@@ -79,13 +80,6 @@ def insert_to_db(ids, user):
 
 
 
-############################
-# update when insert Chroma complete
-############################
-# @router.post("/update", response_model=Optional[ConfluenceResponse])
-# async def update__doc():
-#     log.info("get post request, locat: test")
-
 
 
 ############################
@@ -94,6 +88,14 @@ def insert_to_db(ids, user):
 @router.post("/test", response_model=Optional[ConfluenceResponse])
 async def create_new_doc():
      result = Confluences.get_confluence_by_pageid('860327333')
+     return result
+@router.post("/test4")
+async def create_new_doc():
+     result = "success"
+     return {"message":result,"status":1}
+@router.post("/test3")
+async def create_new_doc():
+     result = "success"
      return result
 
 def blocking_task():

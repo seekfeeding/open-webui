@@ -96,6 +96,8 @@
 	"ComfyUI Base URL is required.": "",
 	"Command": "",
 	"Confirm Password": "",
+	"Confuences": "",
+	"Confuences Refresh Tips": "It require some time to load the Confluence content. Please do not click repeatedly.",
 	"Connections": "",
 	"Content": "",
 	"Context Length": "",
