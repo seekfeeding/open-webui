@@ -65,7 +65,7 @@ def insert_to_db(ids, user):
         confluence_store_result = store_confluence(id=id, url=CONFLUENCE_URL, token=CONFLUENCE_TOKEN, page_id=page_id)
         if confluence_store_result["status"]:
             Confluences.update_status_by_id(id=id, status="2")
-            success_count = +1
+            success_count = success_count + 1
             log.info(f"store confluence {page_id} complete")
         else:
             Confluences.update_status_by_id(id=id, status="3")

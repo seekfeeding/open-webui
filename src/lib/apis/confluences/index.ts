@@ -2,7 +2,7 @@ import { WEBUI_API_BASE_URL } from '$lib/constants';
 
 export const refreshConfluences = async (token: string) => {
 	let error = null;
-
+	console.log("to refresh")
 	const res = await fetch(`${WEBUI_API_BASE_URL}/confluences/refresh`, {
 		method: 'POST',
 		headers: {

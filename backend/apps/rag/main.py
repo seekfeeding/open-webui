@@ -604,7 +604,6 @@ def store_confluence(id: str, url: str, token: str, page_id: str, user=Depends(g
             page_ids=[page_id]
         )
         data = loader.load()
-        log.info(f"load confluence page: {page_id}, data: {data}")
         collection_name = id
         if collection_name == "":
             collection_name = calculate_sha256_string(page_id)[:63]
