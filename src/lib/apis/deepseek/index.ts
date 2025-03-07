@@ -1,10 +1,10 @@
-import { OPENAI_API_BASE_URL } from '$lib/constants';
+import { DEEPSEEK_API_BASE_URL } from '$lib/constants';
 import { promptTemplate } from '$lib/utils';
 
-export const getOpenAIConfig = async (token: string = '') => {
+export const getDeepSeekConfig = async (token: string = '') => {
 	let error = null;
 
-	const res = await fetch(`${OPENAI_API_BASE_URL}/config`, {
+	const res = await fetch(`${DEEPSEEK_API_BASE_URL}/config`, {
 		method: 'GET',
 		headers: {
 			Accept: 'application/json',
@@ -33,10 +33,10 @@ export const getOpenAIConfig = async (token: string = '') => {
 	return res;
 };
 
-export const updateOpenAIConfig = async (token: string = '', enable_openai_api: boolean) => {
+export const updateDeepSeekConfig = async (token: string = '', enable_deepseek_api: boolean) => {
 	let error = null;
 
-	const res = await fetch(`${OPENAI_API_BASE_URL}/config/update`, {
+	const res = await fetch(`${DEEPSEEK_API_BASE_URL}/config/update`, {
 		method: 'POST',
 		headers: {
 			Accept: 'application/json',
@@ -44,7 +44,7 @@ export const updateOpenAIConfig = async (token: string = '', enable_openai_api: 
 			...(token && { authorization: `Bearer ${token}` })
 		},
 		body: JSON.stringify({
-			enable_openai_api: enable_openai_api
+			enable_deepseek_api: enable_deepseek_api
 		})
 	})
 		.then(async (res) => {
@@ -68,10 +68,10 @@ export const updateOpenAIConfig = async (token: string = '', enable_openai_api: 
 	return res;
 };
 
-export const getOpenAIUrls = async (token: string = '') => {
+export const getDeepSeekUrls = async (token: string = '') => {
 	let error = null;
 
-	const res = await fetch(`${OPENAI_API_BASE_URL}/urls`, {
+	const res = await fetch(`${DEEPSEEK_API_BASE_URL}/urls`, {
 		method: 'GET',
 		headers: {
 			Accept: 'application/json',
@@ -97,13 +97,13 @@ export const getOpenAIUrls = async (token: string = '') => {
 		throw error;
 	}
 
-	return res.OPENAI_API_BASE_URLS;
+	return res.DeepSeek_API_BASE_URLS;
 };
 
-export const updateOpenAIUrls = async (token: string = '', urls: string[]) => {
+export const updateDeepSeekUrls = async (token: string = '', urls: string[]) => {
 	let error = null;
 
-	const res = await fetch(`${OPENAI_API_BASE_URL}/urls/update`, {
+	const res = await fetch(`${DEEPSEEK_API_BASE_URL}/urls/update`, {
 		method: 'POST',
 		headers: {
 			Accept: 'application/json',
@@ -132,13 +132,13 @@ export const updateOpenAIUrls = async (token: string = '', urls: string[]) => {
 		throw error;
 	}
 
-	return res.OPENAI_API_BASE_URLS;
+	return res.DeepSeek_API_BASE_URLS;
 };
 
-export const getOpenAIKeys = async (token: string = '') => {
+export const getDeepSeekKeys = async (token: string = '') => {
 	let error = null;
 
-	const res = await fetch(`${OPENAI_API_BASE_URL}/keys`, {
+	const res = await fetch(`${DEEPSEEK_API_BASE_URL}/keys`, {
 		method: 'GET',
 		headers: {
 			Accept: 'application/json',
@@ -164,13 +164,13 @@ export const getOpenAIKeys = async (token: string = '') => {
 		throw error;
 	}
 
-	return res.OPENAI_API_KEYS;
+	return res.DeepSeek_API_KEYS;
 };
 
-export const updateOpenAIKeys = async (token: string = '', keys: string[]) => {
+export const updateDeepSeekKeys = async (token: string = '', keys: string[]) => {
 	let error = null;
 
-	const res = await fetch(`${OPENAI_API_BASE_URL}/keys/update`, {
+	const res = await fetch(`${DEEPSEEK_API_BASE_URL}/keys/update`, {
 		method: 'POST',
 		headers: {
 			Accept: 'application/json',
@@ -199,13 +199,13 @@ export const updateOpenAIKeys = async (token: string = '', keys: string[]) => {
 		throw error;
 	}
 
-	return res.OPENAI_API_KEYS;
+	return res.DeepSeek_API_KEYS;
 };
 
-export const getOpenAIModels = async (token: string = '') => {
+export const getDeepSeekModels = async (token: string = '') => {
 	let error = null;
 
-	const res = await fetch(`${OPENAI_API_BASE_URL}/models`, {
+	const res = await fetch(`${DEEPSEEK_API_BASE_URL}/models`, {
 		method: 'GET',
 		headers: {
 			Accept: 'application/json',
@@ -218,7 +218,7 @@ export const getOpenAIModels = async (token: string = '') => {
 			return res.json();
 		})
 		.catch((err) => {
-			error = `OpenAI: ${err?.error?.message ?? 'Network Problem'}`;
+			error = `DeepSeek: ${err?.error?.message ?? 'Network Problem'}`;
 			return [];
 		});
 
@@ -230,15 +230,15 @@ export const getOpenAIModels = async (token: string = '') => {
 
 	return models
 		? models
-				.map((model) => ({ id: model.id, name: model.name ?? model.id, external: true }))
+				.map((model) => ({ id: model.id, name: model.name ?? model.id, external: true ,type:'deepseek'}))
 				.sort((a, b) => {
 					return a.name.localeCompare(b.name);
 				})
 		: models;
 };
 
-export const getOpenAIModelsDirect = async (
-	base_url: string = 'https://api.openai.com/v1',
+export const getDeepSeekModelsDirect = async (
+	base_url: string = 'https://api.siliconflow.cn/v1',
 	api_key: string = ''
 ) => {
 	let error = null;
@@ -256,7 +256,7 @@ export const getOpenAIModelsDirect = async (
 		})
 		.catch((err) => {
 			console.log(err);
-			error = `OpenAI: ${err?.error?.message ?? 'Network Problem'}`;
+			error = `DeepSeek: ${err?.error?.message ?? 'Network Problem'}`;
 			return null;
 		});
 
@@ -268,16 +268,16 @@ export const getOpenAIModelsDirect = async (
 
 	return models
 		.map((model) => ({ id: model.id, name: model.name ?? model.id, external: true }))
-		.filter((model) => (base_url.includes('openai') ? model.name.includes('gpt') : true))
+		.filter((model) => (base_url.includes('siliconflow') ? model.name.includes('gpt') : true))
 		.sort((a, b) => {
 			return a.name.localeCompare(b.name);
 		});
 };
 
-export const generateOpenAIChatCompletion = async (
+export const generateDeepSeekChatCompletion = async (
 	token: string = '',
 	body: object,
-	url: string = OPENAI_API_BASE_URL
+	url: string = DEEPSEEK_API_BASE_URL
 ): Promise<[Response | null, AbortController]> => {
 	const controller = new AbortController();
 	let error = null;
@@ -303,7 +303,7 @@ export const generateOpenAIChatCompletion = async (
 	return [res, controller];
 };
 
-export const synthesizeOpenAISpeech = async (
+export const synthesizeDeepSeekSpeech = async (
 	token: string = '',
 	speaker: string = 'alloy',
 	text: string = '',
@@ -311,7 +311,7 @@ export const synthesizeOpenAISpeech = async (
 ) => {
 	let error = null;
 
-	const res = await fetch(`${OPENAI_API_BASE_URL}/audio/speech`, {
+	const res = await fetch(`${DEEPSEEK_API_BASE_URL}/audio/speech`, {
 		method: 'POST',
 		headers: {
 			Authorization: `Bearer ${token}`,
@@ -335,13 +335,13 @@ export const synthesizeOpenAISpeech = async (
 	return res;
 };
 
-// DeepSeek的也调这，目前写法比较通用
-export const generateTitle = async (
+// 暂时用openai的方法，
+export const generateDSTitle = async (
 	token: string = '',
 	template: string,
 	model: string,
 	prompt: string,
-	url: string = OPENAI_API_BASE_URL
+	url: string = DEEPSEEK_API_BASE_URL
 ) => {
 	let error = null;
 

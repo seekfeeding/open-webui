@@ -156,6 +156,7 @@
 		}, 100);
 	};
 
+	// 一个问题重问时，切换显示下一次重问响应
 	const showNextMessage = async (message) => {
 		if (message.parentId !== null) {
 			let messageId =

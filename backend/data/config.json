@@ -52,19 +52,30 @@
 				],
 				"content": "Check the following sentence for grammar and clarity: \"[sentence]\". Rewrite it for better readability while maintaining its original meaning."
 			}
-		]
+		],
+		"default_models": "deepseek-ai/DeepSeek-R1"
 	},
 	"openai": {
 		"api_base_urls": [
-			"https://api.openai.com/v1"
+			""
 		],
 		"api_keys": [
 			""
-		]
+		],
+		"enable": false
 	},
 	"ollama": {
 		"base_urls": [
-			"http://10.103.73.25:11434"
+			""
+		]
+	},
+	"deepseek": {
+		"enable": true,
+		"api_base_urls": [
+			"https://api.siliconflow.cn/v1"
+		],
+		"api_keys": [
+			"sk-anjdblvhpfbsumndnrgiozyijfjdjzjzajzkwsrhygxbvddq"
 		]
 	}
 }

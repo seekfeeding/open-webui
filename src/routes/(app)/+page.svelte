@@ -34,18 +34,20 @@
 	import { queryCollection, queryDoc } from '$lib/apis/rag';
 
 	import { queryMemory } from '$lib/apis/memories';
-	import { createOpenAITextStream } from '$lib/apis/streaming';
+	import { createOpenAITextStream,createDeepSeekTextStream } from '$lib/apis/streaming';
 	import MessageInput from '$lib/components/chat/MessageInput.svelte';
 	import Messages from '$lib/components/chat/Messages.svelte';
 	import ModelSelector from '$lib/components/chat/ModelSelector.svelte';
 	import Navbar from '$lib/components/layout/Navbar.svelte';
 	import {
+		DEEPSEEK_API_BASE_URL,
 		LITELLM_API_BASE_URL,
 		OLLAMA_API_BASE_URL,
 		OPENAI_API_BASE_URL,
 		WEBUI_BASE_URL
 	} from '$lib/constants';
 	import { RAGTemplate } from '$lib/utils/rag';
+	import {generateDeepSeekChatCompletion} from "$lib/apis/deepseek";
 
 	const i18n = getContext('i18n');
 
@@ -84,6 +86,7 @@
 	let title = '';
 	let prompt = '';
 	let files = [];
+	// messages和history都是历史对话，格式不同
 	let messages = [];
 	let history = {
 		messages: {},
@@ -320,7 +323,11 @@
 						responseMessage.userContext = userContext;
 
 						if (model?.external) {
-							await sendPromptOpenAI(model, prompt, responseMessageId, _chatId);
+							if (model?.type=='deepseek') {
+								await sendPromptDeepSeek(model, prompt, responseMessageId, _chatId);
+							}else {
+								await sendPromptOpenAI(model, prompt, responseMessageId, _chatId);
+							}
 						} else if (model) {
 							await sendPromptOllama(model, prompt, responseMessageId, _chatId);
 						}
@@ -583,7 +590,180 @@
 			await setChatTitle(_chatId, _title);
 		}
 	};
+	const sendPromptDeepSeek = async (model, userPrompt, responseMessageId, _chatId) => {
+		const responseMessage = history.messages[responseMessageId];
 
+		const docs = messages
+				.filter((message) => message?.files ?? null)
+				.map((message) =>
+						message.files.filter((item) => item.type === 'doc' || item.type === 'collection')
+				)
+				.flat(1);
+
+		console.log(docs);
+
+		scrollToBottom();
+
+		try {
+			const [res, controller] = await generateDeepSeekChatCompletion(
+					localStorage.token,
+					{
+						model: model.id,
+						stream: true,
+						messages: [
+							$settings.system || (responseMessage?.userContext ?? null)
+									? {
+										role: 'system',
+										content: `${$settings?.system ?? ''}${
+												responseMessage?.userContext ?? null
+														? `\n\nUser Context:\n${(responseMessage?.userContext ?? []).join('\n')}`
+														: ''
+										}`
+									}
+									: undefined,
+							...messages
+						]
+								.filter((message) => message)
+								.filter((message) => message.content != '')
+								.map((message, idx, arr) => ({
+									role: message.role,
+									...((message.files?.filter((file) => file.type === 'image').length > 0 ?? false) &&
+									message.role === 'user'
+											? {
+												content: [
+													{
+														type: 'text',
+														text:
+																arr.length - 1 !== idx
+																		? message.content
+																		: message?.raContent ?? message.content
+													},
+													...message.files
+															.filter((file) => file.type === 'image')
+															.map((file) => ({
+																type: 'image_url',
+																image_url: {
+																	url: file.url
+																}
+															}))
+												]
+											}
+											: {
+												content:
+														arr.length - 1 !== idx
+																? message.content
+																: message?.raContent ?? message.content
+											})
+								})),
+						seed: $settings?.options?.seed ?? undefined,
+						stop:
+								$settings?.options?.stop ?? undefined
+										? $settings.options.stop.map((str) =>
+												decodeURIComponent(JSON.parse('"' + str.replace(/\"/g, '\\"') + '"'))
+										)
+										: undefined,
+						temperature: $settings?.options?.temperature ?? undefined,
+						top_p: $settings?.options?.top_p ?? undefined,
+						num_ctx: $settings?.options?.num_ctx ?? undefined,
+						frequency_penalty: $settings?.options?.repeat_penalty ?? undefined,
+						max_tokens: $settings?.options?.num_predict ?? undefined,
+						docs: docs.length > 0 ? docs : undefined,
+						citations: docs.length > 0
+					}
+			);
+
+			// Wait until history/message have been updated
+			await tick();
+
+			scrollToBottom();
+
+			if (res && res.ok && res.body) {
+				// llm响应res以stream流返回时
+				const textStream = await createDeepSeekTextStream(res.body, $settings.splitLargeChunks);
+
+				for await (const update of textStream) {
+					// llm生成答复completions接口，经过createDeepSeekTextStream，响应封装在value中
+					const { value, done, citations, error, reasoning_content } = update;
+					if (error) {
+						await handleOpenAIError(error, null, model, responseMessage);
+						break;
+					}
+					if (done || stopResponseFlag || _chatId !== $chatId) {
+						responseMessage.done = true;
+						messages = messages;
+
+						if (stopResponseFlag) {
+							controller.abort('User: Stop Response');
+						}
+
+						break;
+					}
+
+					if (citations) {
+						responseMessage.citations = citations;
+						continue;
+					}
+
+					if (responseMessage.content == '' && value == '\n') {
+						continue;
+					} else {
+						responseMessage.content += value;
+						responseMessage.reasoning_content += reasoning_content;
+						messages = messages;
+					}
+
+					if ($settings.notificationEnabled && !document.hasFocus()) {
+						const notification = new Notification(`OpenAI ${model}`, {
+							body: responseMessage.content,
+							icon: `${WEBUI_BASE_URL}/static/favicon.png`
+						});
+					}
+
+					if ($settings.responseAutoCopy) {
+						copyToClipboard(responseMessage.content);
+					}
+
+					if ($settings.responseAutoPlayback) {
+						await tick();
+						document.getElementById(`speak-button-${responseMessage.id}`)?.click();
+					}
+
+					if (autoScroll) {
+						scrollToBottom();
+					}
+				}
+
+				if ($chatId == _chatId) {
+					if ($settings.saveChatHistory ?? true) {
+						chat = await updateChatById(localStorage.token, _chatId, {
+							messages: messages,
+							history: history
+						});
+						await chats.set(await getChatList(localStorage.token));
+					}
+				}
+			} else {
+				await handleOpenAIError(null, res, model, responseMessage);
+			}
+		} catch (error) {
+			await handleOpenAIError(error, null, model, responseMessage);
+		}
+		messages = messages;
+
+		stopResponseFlag = false;
+		await tick();
+
+		if (autoScroll) {
+			scrollToBottom();
+		}
+
+		if (messages.length == 2) {
+			window.history.replaceState(history.state, '', `/c/${_chatId}`);
+
+			const _title = await generateChatTitle(userPrompt);
+			await setChatTitle(_chatId, _title);
+		}
+	};
 	const sendPromptOpenAI = async (model, userPrompt, responseMessageId, _chatId) => {
 		const responseMessage = history.messages[responseMessageId];
 
@@ -860,6 +1040,18 @@
 			const titleModel = $models.find((model) => model.id === titleModelId);
 
 			console.log(titleModel);
+			let generateTitleUrl =''
+			if (titleModel?.external){
+				if (titleModel?.source?.toLowerCase() === 'litellm'){
+					generateTitleUrl=`${LITELLM_API_BASE_URL}/v1`
+				}else if (titleModel?.source?.toLowerCase() === 'deepseek'){
+					generateTitleUrl=`${DEEPSEEK_API_BASE_URL}/v1`
+				}else{
+					generateTitleUrl=`${OPENAI_API_BASE_URL}`
+				}
+			}else {
+				generateTitleUrl =`${OLLAMA_API_BASE_URL}/v1`
+			}
 			const title = await generateTitle(
 				localStorage.token,
 				$settings?.title?.prompt ??
@@ -868,11 +1060,7 @@
 					) + ' {{prompt}}',
 				titleModelId,
 				userPrompt,
-				titleModel?.external ?? false
-					? titleModel?.source?.toLowerCase() === 'litellm'
-						? `${LITELLM_API_BASE_URL}/v1`
-						: `${OPENAI_API_BASE_URL}`
-					: `${OLLAMA_API_BASE_URL}/v1`
+					generateTitleUrl
 			);
 
 			return title;

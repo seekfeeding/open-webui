@@ -3,18 +3,25 @@ import sha256 from 'js-sha256';
 import { getOllamaModels } from '$lib/apis/ollama';
 import { getOpenAIModels } from '$lib/apis/openai';
 import { getLiteLLMModels } from '$lib/apis/litellm';
+import { getDeepSeekModels } from '$lib/apis/deepseek';
 
 export const getModels = async (token: string) => {
 	let models = await Promise.all([
-		getOllamaModels(token).catch((error) => {
-			console.log(error);
-			return null;
-		}),
-		getOpenAIModels(token).catch((error) => {
-			console.log(error);
-			return null;
-		}),
-		getLiteLLMModels(token).catch((error) => {
+		// 初始化models list，只加载了deepseek，要用其他模型就解除注释
+
+		// getOllamaModels(token).catch((error) => {
+		// 	console.log(error);
+		// 	return null;
+		// }),
+		// getOpenAIModels(token).catch((error) => {
+		// 	console.log(error);
+		// 	return null;
+		// }),
+		// getLiteLLMModels(token).catch((error) => {
+		// 	console.log(error);
+		// 	return null;
+		// }),
+		getDeepSeekModels(token).catch((error) => {
 			console.log(error);
 			return null;
 		})

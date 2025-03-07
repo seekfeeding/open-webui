@@ -12,6 +12,14 @@
 		updateOpenAIKeys,
 		updateOpenAIUrls
 	} from '$lib/apis/openai';
+	import {
+	    		getDeepSeekConfig,
+        		getDeepSeekKeys,
+        		getDeepSeekUrls,
+                updateDeepSeekConfig,
+                updateDeepSeekKeys,
+                updateDeepSeekUrls,
+	}from '$lib/apis/deepseek';
 	import { toast } from 'svelte-sonner';
 	import Switch from '$lib/components/common/Switch.svelte';
 
@@ -22,6 +30,11 @@
 	// External
 	let OLLAMA_BASE_URLS = [''];
 
+	let DeepSeek_API_KEYS = [''];
+	let DeepSeek_API_BASE_URLS = [''];
+
+	let ENABLE_DeepSeek_API = true;
+
 	let OPENAI_API_KEYS = [''];
 	let OPENAI_API_BASE_URLS = [''];
 
@@ -30,6 +43,12 @@
 	const updateOpenAIHandler = async () => {
 		OPENAI_API_BASE_URLS = await updateOpenAIUrls(localStorage.token, OPENAI_API_BASE_URLS);
 		OPENAI_API_KEYS = await updateOpenAIKeys(localStorage.token, OPENAI_API_KEYS);
+
+		await models.set(await getModels());
+	};
+	const updateDeepSeekHandler = async () => {
+		OPENAI_API_BASE_URLS = await updateDeepSeekUrls(localStorage.token, DeepSeek_API_BASE_URLS);
+		OPENAI_API_KEYS = await updateDeepSeekKeys(localStorage.token, DeepSeek_API_KEYS);
 
 		await models.set(await getModels());
 	};
@@ -52,11 +71,19 @@
 		if ($user.role === 'admin') {
 			OLLAMA_BASE_URLS = await getOllamaUrls(localStorage.token);
 
+			const ds_config = await getDeepSeekConfig(localStorage.token);
+			ENABLE_DeepSeek_API = ds_config.ENABLE_DeepSeek_API;
+			if (ENABLE_DeepSeek_API) {
+
+				DeepSeek_API_BASE_URLS = await getDeepSeekUrls(localStorage.token);
+				DeepSeek_API_KEYS = await getDeepSeekKeys(localStorage.token);
+			}
 			const config = await getOpenAIConfig(localStorage.token);
 			ENABLE_OPENAI_API = config.ENABLE_OPENAI_API;
-
-			OPENAI_API_BASE_URLS = await getOpenAIUrls(localStorage.token);
-			OPENAI_API_KEYS = await getOpenAIKeys(localStorage.token);
+			if(ENABLE_OPENAI_API){
+				OPENAI_API_BASE_URLS = await getOpenAIUrls(localStorage.token);
+				OPENAI_API_KEYS = await getOpenAIKeys(localStorage.token);
+			}
 		}
 	});
 </script>
@@ -65,10 +92,104 @@
 	class="flex flex-col h-full justify-between text-sm"
 	on:submit|preventDefault={() => {
 		updateOpenAIHandler();
+		updateDeepSeekHandler();
 		dispatch('save');
 	}}
 >
 	<div class="  pr-1.5 overflow-y-scroll max-h-[25rem] space-y-3">
+
+<!-- 这是 deepseek  -->
+		<div class=" space-y-3">
+			<div class="mt-2 space-y-2 pr-1.5">
+				<div class="flex justify-between items-center text-sm">
+					<div class="  font-medium">{$i18n.t('DeepSeek API')}</div>
+
+					<div class="mt-1">
+						<Switch
+							bind:state={ENABLE_DeepSeek_API}
+							on:change={async () => {
+								updateDeepSeekConfig(localStorage.token, ENABLE_DeepSeek_API);
+							}}
+						/>
+					</div>
+				</div>
+
+				{#if ENABLE_DeepSeek_API}
+					<div class="flex flex-col gap-1">
+						{#each DeepSeek_API_BASE_URLS as url, idx}
+							<div class="flex w-full gap-2">
+								<div class="flex-1">
+									<input
+										class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none"
+										placeholder={$i18n.t('API Base URL')}
+										bind:value={url}
+										autocomplete="off"
+									/>
+								</div>
+
+								<div class="flex-1">
+									<input
+										class="w-full rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 outline-none"
+										placeholder={$i18n.t('API Key')}
+										bind:value={DeepSeek_API_KEYS[idx]}
+										autocomplete="off"
+									/>
+								</div>
+								<div class="self-center flex items-center">
+									{#if idx === 0}
+										<button
+											class="px-1"
+											on:click={() => {
+												DeepSeek_API_BASE_URLS = [...DeepSeek_API_BASE_URLS, ''];
+												DeepSeek_API_KEYS = [...DeepSeek_API_KEYS, ''];
+											}}
+											type="button"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 16 16"
+												fill="currentColor"
+												class="w-4 h-4"
+											>
+												<path
+													d="M8.75 3.75a.75.75 0 0 0-1.5 0v3.5h-3.5a.75.75 0 0 0 0 1.5h3.5v3.5a.75.75 0 0 0 1.5 0v-3.5h3.5a.75.75 0 0 0 0-1.5h-3.5v-3.5Z"
+												/>
+											</svg>
+										</button>
+									{:else}
+										<button
+											class="px-1"
+											on:click={() => {
+												DeepSeek_API_BASE_URLS = DeepSeek_API_BASE_URLS.filter(
+													(url, urlIdx) => idx !== urlIdx
+												);
+												DeepSeek_API_KEYS = DeepSeek_API_KEYS.filter((key, keyIdx) => idx !== keyIdx);
+											}}
+											type="button"
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 16 16"
+												fill="currentColor"
+												class="w-4 h-4"
+											>
+												<path d="M3.75 7.25a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Z" />
+											</svg>
+										</button>
+									{/if}
+								</div>
+							</div>
+							<div class=" mb-1 text-xs text-gray-400 dark:text-gray-500">
+								{$i18n.t('WebUI will make requests to')}
+								<span class=" text-gray-200">'{url}/models'</span>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		</div>
+
+<!-- 这是 openai  -->
 		<div class=" space-y-3">
 			<div class="mt-2 space-y-2 pr-1.5">
 				<div class="flex justify-between items-center text-sm">

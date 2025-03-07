@@ -21,6 +21,7 @@ from starlette.responses import StreamingResponse, Response
 
 from apps.ollama.main import app as ollama_app
 from apps.openai.main import app as openai_app
+from apps.deepseek.main import app as deepseek_app
 
 from apps.litellm.main import (
     app as litellm_app,
@@ -251,6 +252,7 @@ async def update_embedding_function(request: Request, call_next):
 app.mount("/litellm/api", litellm_app)
 app.mount("/ollama", ollama_app)
 app.mount("/openai/api", openai_app)
+app.mount("/deepseek/api", deepseek_app)
 
 app.mount("/images/api/v1", images_app)
 app.mount("/audio/api/v1", audio_app)
@@ -309,6 +311,9 @@ async def update_model_filter_config(
 
     openai_app.state.config.ENABLE_MODEL_FILTER = app.state.config.ENABLE_MODEL_FILTER
     openai_app.state.config.MODEL_FILTER_LIST = app.state.config.MODEL_FILTER_LIST
+
+    deepseek_app.state.config.ENABLE_MODEL_FILTER = app.state.config.ENABLE_MODEL_FILTER
+    deepseek_app.state.config.MODEL_FILTER_LIST = app.state.config.MODEL_FILTER_LIST
 
     litellm_app.state.ENABLE_MODEL_FILTER = app.state.config.ENABLE_MODEL_FILTER
     litellm_app.state.MODEL_FILTER_LIST = app.state.config.MODEL_FILTER_LIST
@@ -421,4 +426,4 @@ else:
     )
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="LONGXIAO2-0FMZY", port=8081, forwarded_allow_ips='*')
+    uvicorn.run(app, host="0.0.0.0", port=8080, forwarded_allow_ips='*')

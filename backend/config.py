@@ -55,6 +55,7 @@ log_sources = [
     "MAIN",
     "MODELS",
     "OLLAMA",
+    "DeepSeek",
     "OPENAI",
     "RAG",
     "WEBHOOK",
@@ -412,6 +413,54 @@ OLLAMA_BASE_URLS = [url.strip() for url in OLLAMA_BASE_URLS.split(";")]
 OLLAMA_BASE_URLS = PersistentConfig(
     "OLLAMA_BASE_URLS", "ollama.base_urls", OLLAMA_BASE_URLS
 )
+####################################
+# Deepseek API
+####################################
+
+
+ENABLE_DeepSeek_API = PersistentConfig(
+    "ENABLE_DeepSeek_API",
+    "deepseek.enable",
+    os.environ.get("ENABLE_DeepSeek_API", "True").lower() == "True",
+)
+
+DeepSeek_API_KEY = os.environ.get("DeepSeek_API_KEY", "")
+DeepSeek_API_BASE_URL = os.environ.get("DeepSeek_API_BASE_URL", "")
+
+if DeepSeek_API_BASE_URL == "":
+    DeepSeek_API_BASE_URL = "https://api.siliconflow.cn/v1"
+
+DeepSeek_API_KEYS = os.environ.get("DeepSeek_API_KEYS", "")
+DeepSeek_API_KEYS = DeepSeek_API_KEYS if DeepSeek_API_KEYS != "" else DeepSeek_API_KEY
+
+DeepSeek_API_KEYS = [url.strip() for url in DeepSeek_API_KEYS.split(";")]
+DeepSeek_API_KEYS = PersistentConfig(
+    "DeepSeek_API_KEYS", "deepseek.api_keys", DeepSeek_API_KEYS
+)
+
+DeepSeek_API_BASE_URLS = os.environ.get("DeepSeek_API_BASE_URLS", "")
+DeepSeek_API_BASE_URLS = (
+    DeepSeek_API_BASE_URLS if DeepSeek_API_BASE_URLS != "" else DeepSeek_API_BASE_URL
+)
+
+DeepSeek_API_BASE_URLS = [
+    url.strip() if url != "" else "https://api.siliconflow.cn/v1"
+    for url in DeepSeek_API_BASE_URLS.split(";")
+]
+DeepSeek_API_BASE_URLS = PersistentConfig(
+    "DeepSeek_API_BASE_URLS", "deepseek.api_base_urls", DeepSeek_API_BASE_URLS
+)
+
+DeepSeek_API_KEY = ""
+
+try:
+    DeepSeek_API_KEY = DeepSeek_API_KEYS.value[
+        DeepSeek_API_BASE_URLS.value.index("https://api.siliconflow.cn/v1")
+    ]
+except:
+    pass
+
+DeepSeek_API_BASE_URL = "https://api.siliconflow.cn/v1"
 
 ####################################
 # OPENAI_API
@@ -421,7 +470,7 @@ OLLAMA_BASE_URLS = PersistentConfig(
 ENABLE_OPENAI_API = PersistentConfig(
     "ENABLE_OPENAI_API",
     "openai.enable",
-    os.environ.get("ENABLE_OPENAI_API", "True").lower() == "true",
+    os.environ.get("ENABLE_OPENAI_API", "false").lower() == "true",
 )
 
 
@@ -514,11 +563,11 @@ DEFAULT_PROMPT_SUGGESTIONS = PersistentConfig(
         },
     ],
 )
-
+# 用户注册默认授权
 DEFAULT_USER_ROLE = PersistentConfig(
     "DEFAULT_USER_ROLE",
     "ui.default_user_role",
-    os.getenv("DEFAULT_USER_ROLE", "pending"),
+    os.getenv("DEFAULT_USER_ROLE", "user"),
 )
 
 USER_PERMISSIONS_CHAT_DELETION = (

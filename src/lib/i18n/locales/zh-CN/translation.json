@@ -441,6 +441,8 @@
 	"This ensures that your valuable conversations are securely saved to your backend database. Thank you!": "这确保了您宝贵的对话被安全保存到后端数据库中。谢谢！",
 	"This setting does not sync across browsers or devices.": "此设置不会在浏览器或设备之间同步。",
 	"Thorough explanation": "详尽的解释",
+	"Thinking": "思考中： ",
+	"Thinking End": "思考结束",
 	"Tip: Update multiple variable slots consecutively by pressing the tab key in the chat input after each replacement.": "提示：在每次替换后，在聊天输入中按 Tab 键可以连续更新多个变量。",
 	"Title": "标题",
 	"Title (e.g. Tell me a fun fact)": "标题（例如 告诉我一个有趣的事实）",

@@ -4,11 +4,70 @@ import type { ParsedEvent } from 'eventsource-parser';
 type TextStreamUpdate = {
 	done: boolean;
 	value: string;
+	reasoning_content?: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	citations?: any;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	error?: any;
 };
+
+export async function createDeepSeekTextStream(
+	responseBody: ReadableStream<Uint8Array>,
+	splitLargeDeltas: boolean
+): Promise<AsyncGenerator<TextStreamUpdate>> {
+	const eventStream = responseBody
+		.pipeThrough(new TextDecoderStream())
+		.pipeThrough(new EventSourceParserStream())
+		.getReader();
+	let iterator = deepseekStreamToIterator(eventStream);
+	if (splitLargeDeltas) {
+		iterator = streamLargeDeltasAsRandomChunks(iterator);
+	}
+	return iterator;
+}
+
+async function* deepseekStreamToIterator(
+	reader: ReadableStreamDefaultReader<ParsedEvent>
+): AsyncGenerator<TextStreamUpdate> {
+	while (true) {
+		const { value, done } = await reader.read();
+		if (done) {
+			yield { done: true, value: '' };
+			break;
+		}
+		if (!value) {
+			continue;
+		}
+		const data = value.data;
+		if (data.startsWith('[DONE]')) {
+			yield { done: true, value: '' };
+			break;
+		}
+
+		try {
+			const parsedData = JSON.parse(data);
+			console.log(parsedData);
+
+			if (parsedData.error) {
+				yield { done: true, value: '', error: parsedData.error };
+				break;
+			}
+
+			if (parsedData.citations) {
+				yield { done: false, value: '', citations: parsedData.citations };
+				continue;
+			}
+
+			yield {
+				done: false,
+				value: parsedData.choices?.[0]?.delta?.content ?? "",
+				reasoning_content: parsedData.choices?.[0]?.delta?.reasoning_content ?? ""
+			};
+		} catch (e) {
+			console.error('Error extracting delta from SSE event:', e);
+		}
+	}
+}
 
 // createOpenAITextStream takes a responseBody with a SSE response,
 // and returns an async generator that emits delta updates with large deltas chunked into random sized chunks

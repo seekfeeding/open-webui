@@ -70,11 +70,14 @@
 	let selectedCitation = null;
 
 	$: tokens = marked.lexer(sanitizeResponseContent(message?.content));
-
+	$: reasoningTokens = marked.lexer(sanitizeResponseContent(message?.reasoning_content??""));
 	const renderer = new marked.Renderer();
-
+	const reasoningRenderer = new marked.Renderer();
 	// For code blocks with simple backticks
 	renderer.codespan = (code) => {
+		return `<code>${code.replaceAll('&amp;', '&')}</code>`;
+	};
+	reasoningRenderer.codespan = (code) => {
 		return `<code>${code.replaceAll('&amp;', '&')}</code>`;
 	};
 
@@ -438,6 +441,38 @@
 							{:else if message.content === ''}
 								<Skeleton />
 							{:else}
+								<!--llm响应展示区域-->
+								{#if reasoningTokens}
+									<span style="font-weight: bold">{$i18n.t('Thinking')}</span>
+									<div class="reasoningTokens">
+										{#each reasoningTokens as token, tokenIdx}
+											{#if token.type === 'code'}
+												<CodeBlock
+														id={`${message.id}-${tokenIdx}`}
+														lang={token.lang}
+														code={revertSanitizedResponseContent(token.text)}
+												/>
+											{:else}
+												{@html marked.parse(token.raw, {
+													...defaults,
+													gfm: true,
+													breaks: true,
+													reasoningRenderer
+												})}
+											{/if}
+											{@html marked.parse(token.raw, {
+												...defaults,
+												gfm: true,
+												breaks: true,
+												reasoningRenderer
+											})}
+										{/each}
+									</div>
+
+									<span style="font-weight: bold">{$i18n.t('Thinking End')}</span>
+									<br>
+									<br>
+								{/if}
 								{#each tokens as token, tokenIdx}
 									{#if token.type === 'code'}
 										<CodeBlock
@@ -493,7 +528,7 @@
 									{/each}
 								</div>
 							{/if}
-
+							<!--响应操作栏-->
 							{#if message.done || siblings.length > 1}
 								<div
 									class=" flex justify-start overflow-x-auto buttons text-gray-600 dark:text-gray-500"

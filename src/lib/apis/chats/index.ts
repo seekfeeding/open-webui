@@ -421,6 +421,7 @@ export const deleteSharedChatById = async (token: string, id: string) => {
 	return res;
 };
 
+// 更新话题标题方法，包括话题标题，历史对话
 export const updateChatById = async (token: string, id: string, chat: object) => {
 	let error = null;
 
