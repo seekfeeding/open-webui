@@ -592,6 +592,9 @@
 	};
 	const sendPromptDeepSeek = async (model, userPrompt, responseMessageId, _chatId) => {
 		const responseMessage = history.messages[responseMessageId];
+		if (!responseMessage.reasoning_content){
+			responseMessage.reasoning_content = ''
+		}
 
 		const docs = messages
 				.filter((message) => message?.files ?? null)

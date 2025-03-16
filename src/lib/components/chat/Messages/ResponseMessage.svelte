@@ -460,12 +460,12 @@
 													reasoningRenderer
 												})}
 											{/if}
-											{@html marked.parse(token.raw, {
-												...defaults,
-												gfm: true,
-												breaks: true,
-												reasoningRenderer
-											})}
+											<!--{@html marked.parse(token.raw, {-->
+											<!--	...defaults,-->
+											<!--	gfm: true,-->
+											<!--	breaks: true,-->
+											<!--	reasoningRenderer-->
+											<!--})}-->
 										{/each}
 									</div>
 
